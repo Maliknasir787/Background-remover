@@ -5,58 +5,113 @@
   <title>Background Remover</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
       text-align: center;
+      padding: 30px;
     }
-    #output {
+    h1 {
+      color: #333;
+    }
+    input[type="file"] {
       margin-top: 20px;
     }
+    button {
+      padding: 10px 20px;
+      margin-top: 15px;
+      font-size: 16px;
+      background-color: #007BFF;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #output {
+      margin-top: 30px;
+    }
     img {
-      max-width: 100%;
+      max-width: 90%;
+      margin: 15px 0;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    #downloadBtn {
+      display: none;
       margin-top: 10px;
+      background-color: #28a745;
+    }
+    #downloadBtn:hover {
+      background-color: #1e7e34;
     }
   </style>
 </head>
 <body>
   <h1>Upload Image to Remove Background</h1>
   <input type="file" id="imageInput" accept="image/*">
+  <br>
   <button onclick="uploadAndRemoveBG()">Upload & Remove Background</button>
 
-  <div id="output"></div>
+  <div id="output">
+    <p id="status"></p>
+  </div>
+
+  <a id="downloadBtn" download="background_removed.png">Download Image</a>
 
   <script>
     async function uploadAndRemoveBG() {
       const input = document.getElementById('imageInput');
-      if (!input.files[0]) return alert('Please select an image file.');
+      const status = document.getElementById('status');
+      const output = document.getElementById('output');
+      const downloadBtn = document.getElementById('downloadBtn');
+      output.innerHTML = '';
+      downloadBtn.style.display = 'none';
+
+      if (!input.files[0]) {
+        alert('Please select an image.');
+        return;
+      }
+
+      status.textContent = 'Uploading image...';
 
       const file = input.files[0];
       const formData = new FormData();
       formData.append('image', file);
       formData.append('key', '9a630c78902747a438f809137d5e1a37');
 
-      // Upload image to bbimg
-      const uploadRes = await fetch('https://api.imgbb.com/1/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const uploadData = await uploadRes.json();
+      try {
+        // Upload to bbimg
+        const uploadRes = await fetch('https://api.imgbb.com/1/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const uploadData = await uploadRes.json();
 
-      if (!uploadData.success) {
-        return alert('Image upload failed');
+        if (!uploadData.success) {
+          status.textContent = 'Failed to upload image.';
+          return;
+        }
+
+        const imageUrl = uploadData.data.url;
+        output.innerHTML = `<p>Original Image:</p><img src="${imageUrl}">`;
+        status.textContent = 'Removing background...';
+
+        // Call background remover API
+        const bgRes = await fetch(`https://botfather.cloud/Apis/BGRemove/client.php?imageUrl=${encodeURIComponent(imageUrl)}`);
+        const bgBlob = await bgRes.blob();
+        const bgUrl = URL.createObjectURL(bgBlob);
+
+        output.innerHTML += `<p>Background Removed:</p><img id="resultImg" src="${bgUrl}">`;
+        downloadBtn.href = bgUrl;
+        downloadBtn.style.display = 'inline-block';
+        status.textContent = '';
+      } catch (error) {
+        console.error(error);
+        status.textContent = 'Something went wrong. Try again.';
       }
-
-      const imageUrl = uploadData.data.url;
-      document.getElementById('output').innerHTML = `<p>Uploaded Image:</p><img src="${imageUrl}">`;
-
-      // Call background remover API
-      const bgRes = await fetch(`https://botfather.cloud/Apis/BGRemove/client.php?imageUrl=${encodeURIComponent(imageUrl)}`);
-      const bgBlob = await bgRes.blob();
-      const bgUrl = URL.createObjectURL(bgBlob);
-
-      document.getElementById('output').innerHTML += `<p>Background Removed:</p><img src="${bgUrl}">`;
     }
   </script>
 </body>
-  </html>
-  
+</html>
